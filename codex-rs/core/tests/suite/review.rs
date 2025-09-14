@@ -16,6 +16,7 @@ use codex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
 use core_test_support::load_default_config_for_test;
 use core_test_support::load_sse_fixture_with_id_from_str;
 use core_test_support::wait_for_event;
+use core_test_support::wait_for_event_with_timeout;
 use pretty_assertions::assert_eq;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -278,9 +279,25 @@ async fn review_uses_custom_review_model_from_config() {
         .unwrap();
 
     // Wait for completion
-    let _entered = wait_for_event(&codex, |ev| matches!(ev, EventMsg::EnteredReviewMode(_))).await;
-    let _closed = wait_for_event(&codex, |ev| matches!(ev, EventMsg::ExitedReviewMode(None))).await;
-    let _complete = wait_for_event(&codex, |ev| matches!(ev, EventMsg::TaskComplete(_))).await;
+    // Allow extra time on slower/loaded CI runners (especially Windows).
+    let _entered = wait_for_event_with_timeout(
+        &codex,
+        |ev| matches!(ev, EventMsg::EnteredReviewMode(_)),
+        tokio::time::Duration::from_secs(20),
+    )
+    .await;
+    let _closed = wait_for_event_with_timeout(
+        &codex,
+        |ev| matches!(ev, EventMsg::ExitedReviewMode(None)),
+        tokio::time::Duration::from_secs(20),
+    )
+    .await;
+    let _complete = wait_for_event_with_timeout(
+        &codex,
+        |ev| matches!(ev, EventMsg::TaskComplete(_)),
+        tokio::time::Duration::from_secs(20),
+    )
+    .await;
 
     // Assert the request body model equals the configured review model
     let request = &server.received_requests().await.unwrap()[0];
