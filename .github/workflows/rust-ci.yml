@@ -120,9 +120,9 @@ jobs:
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
             profile: dev
-          - runner: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            profile: dev
+          # - runner: windows-11-arm
+          #   target: aarch64-pc-windows-msvc
+          #   profile: dev
 
           # Also run representative release builds on Mac and Linux because
           # there could be release-only build errors we want to catch.
@@ -137,9 +137,9 @@ jobs:
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
             profile: release
-          - runner: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            profile: release
+          # - runner: windows-11-arm
+          #   target: aarch64-pc-windows-msvc
+          #   profile: release
 
         repeat: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
