@@ -13,3 +13,4 @@ mod review;
 mod seatbelt;
 mod stream_error_allows_next_turn;
 mod stream_no_completed;
+mod user_shell_cmd;
