@@ -7,7 +7,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=14.8.0"
   },
   "files": [
     "bin",
