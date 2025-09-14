@@ -134,9 +134,9 @@ jobs:
           # - runner: ubuntu-24.04
           #   target: x86_64-unknown-linux-musl
           #   profile: release
-          - runner: windows-latest
-            target: x86_64-pc-windows-msvc
-            profile: release
+          # - runner: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   profile: release
           # - runner: windows-11-arm
           #   target: aarch64-pc-windows-msvc
           #   profile: release
