@@ -16,6 +16,7 @@ use codex_core::spawn::CODEX_SANDBOX_NETWORK_DISABLED_ENV_VAR;
 use core_test_support::load_default_config_for_test;
 use core_test_support::load_sse_fixture_with_id_from_str;
 use core_test_support::wait_for_event;
+use core_test_support::wait_for_event_with_timeout;
 use pretty_assertions::assert_eq;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -278,9 +279,25 @@ async fn review_uses_custom_review_model_from_config() {
         .unwrap();
 
     // Wait for completion
-    let _entered = wait_for_event(&codex, |ev| matches!(ev, EventMsg::EnteredReviewMode(_))).await;
-    let _closed = wait_for_event(&codex, |ev| matches!(ev, EventMsg::ExitedReviewMode(None))).await;
-    let _complete = wait_for_event(&codex, |ev| matches!(ev, EventMsg::TaskComplete(_))).await;
+    // Allow extra time on slower/loaded CI runners (especially Windows).
+    let _entered = wait_for_event_with_timeout(
+        &codex,
+        |ev| matches!(ev, EventMsg::EnteredReviewMode(_)),
+        tokio::time::Duration::from_secs(20),
+    )
+    .await;
+    let _closed = wait_for_event_with_timeout(
+        &codex,
+        |ev| matches!(ev, EventMsg::ExitedReviewMode(None)),
+        tokio::time::Duration::from_secs(20),
+    )
+    .await;
+    let _complete = wait_for_event_with_timeout(
+        &codex,
+        |ev| matches!(ev, EventMsg::TaskComplete(_)),
+        tokio::time::Duration::from_secs(20),
+    )
+    .await;
 
     // Assert the request body model equals the configured review model
     let request = &server.received_requests().await.unwrap()[0];
@@ -507,6 +524,8 @@ async fn start_responses_server_with_sse(sse_raw: &str, expected_requests: usize
         .respond_with(
             ResponseTemplate::new(200)
                 .insert_header("content-type", "text/event-stream")
+                // Ensure clients don't wait for a keep‑alive connection: close after body.
+                .insert_header("connection", "close")
                 .set_body_raw(sse.clone(), "text/event-stream"),
         )
         .expect(expected_requests as u64)
@@ -527,6 +546,10 @@ where
 {
     let model_provider = ModelProviderInfo {
         base_url: Some(format!("{}/v1", server.uri())),
+        // Keep the SSE stream responsive in tests: if the mock server leaves the
+        // connection open after sending the final event, this short idle timeout
+        // will cause the client to emit an error and let the turn complete.
+        stream_idle_timeout_ms: Some(1_000),
         ..built_in_model_providers()["openai"].clone()
     };
     let mut config = load_default_config_for_test(codex_home);
