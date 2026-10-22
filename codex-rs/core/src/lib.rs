@@ -39,6 +39,7 @@ pub mod parse_command;
 mod truncate;
 mod unified_exec;
 mod user_instructions;
+pub use model_provider_info::BUILT_IN_NVIDIA_MODEL_PROVIDER_ID;
 pub use model_provider_info::BUILT_IN_OSS_MODEL_PROVIDER_ID;
 pub use model_provider_info::ModelProviderInfo;
 pub use model_provider_info::WireApi;

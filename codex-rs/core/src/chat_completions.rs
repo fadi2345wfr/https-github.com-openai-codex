@@ -338,6 +338,16 @@ pub(crate) async fn stream_chat_completions(
     }
 }
 
+/// Returns the reasoning payload of a Chat Completions `delta` or `message`.
+/// Most providers call it `reasoning`, while vLLM-based servers such as NVIDIA
+/// NIM (Nemotron) call it `reasoning_content`.
+fn reasoning_field(obj: &serde_json::Value) -> Option<&serde_json::Value> {
+    ["reasoning", "reasoning_content"]
+        .into_iter()
+        .filter_map(|key| obj.get(key))
+        .find(|v| !v.is_null())
+}
+
 /// Lightweight SSE processor for the Chat Completions streaming format. The
 /// output is mapped onto Codex's internal [`ResponseEvent`] so that the rest
 /// of the pipeline can stay agnostic of the underlying wire format.
@@ -459,7 +469,7 @@ async fn process_chat_sse<S>(
             // Forward any reasoning/thinking deltas if present.
             // Some providers stream `reasoning` as a plain string while others
             // nest the text under an object (e.g. `{ "reasoning": { "text": "…" } }`).
-            if let Some(reasoning_val) = choice.get("delta").and_then(|d| d.get("reasoning")) {
+            if let Some(reasoning_val) = choice.get("delta").and_then(reasoning_field) {
                 let mut maybe_text = reasoning_val
                     .as_str()
                     .map(|s| s.to_string())
@@ -491,8 +501,7 @@ async fn process_chat_sse<S>(
             }
 
             // Some providers only include reasoning on the final message object.
-            if let Some(message_reasoning) = choice.get("message").and_then(|m| m.get("reasoning"))
-            {
+            if let Some(message_reasoning) = choice.get("message").and_then(reasoning_field) {
                 // Accept either a plain string or an object with { text | content }
                 if let Some(s) = message_reasoning.as_str() {
                     if !s.is_empty() {

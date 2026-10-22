@@ -105,6 +105,10 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
         )
     } else if slug.starts_with("gpt-oss") || slug.starts_with("openai/gpt-oss") {
         model_family!(slug, "gpt-oss", apply_patch_tool_type: Some(ApplyPatchToolType::Function))
+    } else if slug.to_ascii_lowercase().contains("nemotron") {
+        // NVIDIA Nemotron models (e.g. "nvidia/nemotron-3-super-120b-a12b")
+        // are served over Chat Completions, which has no freeform tools.
+        model_family!(slug, "nemotron", apply_patch_tool_type: Some(ApplyPatchToolType::Function))
     } else if slug.starts_with("gpt-4o") {
         simple_model_family!(slug, "gpt-4o")
     } else if slug.starts_with("gpt-3.5") {
@@ -116,5 +120,26 @@ pub fn find_family_for_model(slug: &str) -> Option<ModelFamily> {
         )
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn nemotron_models_use_function_apply_patch_tool() {
+        for slug in [
+            "nvidia/nemotron-3-super-120b-a12b",
+            "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-FP8",
+        ] {
+            let family = find_family_for_model(slug).expect("nemotron family");
+            assert_eq!(family.family, "nemotron");
+            assert_eq!(
+                family.apply_patch_tool_type,
+                Some(ApplyPatchToolType::Function)
+            );
+        }
     }
 }

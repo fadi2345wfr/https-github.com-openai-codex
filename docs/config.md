@@ -69,6 +69,24 @@ base_url = "https://api.mistral.ai/v1"
 env_key = "MISTRAL_API_KEY"
 ```
 
+### NVIDIA Nemotron
+
+Codex ships with a built-in `nvidia` provider for NVIDIA's hosted API at [build.nvidia.com](https://build.nvidia.com), so you can run Codex on NVIDIA's Nemotron 3 Super model (`nvidia/nemotron-3-super-120b-a12b`) without adding a `model_providers` entry. Create an API key on build.nvidia.com and export it as `NVIDIA_API_KEY`, then run:
+
+```shell
+codex -c model_provider=nvidia -m nvidia/nemotron-3-super-120b-a12b
+```
+
+Or add a profile to `config.toml` and start Codex with `codex --profile nemotron`:
+
+```toml
+[profiles.nemotron]
+model_provider = "nvidia"
+model = "nvidia/nemotron-3-super-120b-a12b"
+```
+
+To use a self-hosted NIM instead, export `NVIDIA_BASE_URL` (for example `http://localhost:8000/v1`). The provider still reads `NVIDIA_API_KEY`, so set it to any non-empty value if your server doesn't check keys.
+
 Note that Azure requires `api-version` to be passed as a query parameter, so be sure to specify it as part of `query_params` when defining the Azure provider:
 
 ```toml
@@ -127,7 +145,7 @@ How long Codex will wait for activity on a streaming response before treating th
 
 ## model_provider
 
-Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable.
+Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable, and for the built-in `nvidia` provider via `NVIDIA_BASE_URL`.
 
 Note that if you override `model_provider`, then you likely want to override
 `model`, as well. For example, if you are running ollama with Mistral locally,
