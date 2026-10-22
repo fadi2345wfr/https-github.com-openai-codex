@@ -63,6 +63,13 @@ pub(crate) fn get_model_info(model_family: &ModelFamily) -> Option<ModelInfo> {
 
         _ if slug.starts_with("gpt-5") => Some(ModelInfo::new(272_000, 128_000)),
 
+        // Nemotron 3 Super supports up to 1M tokens, but is served with a 256k
+        // window by default.
+        // https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b/modelcard
+        _ if slug.to_ascii_lowercase().contains("nemotron-3-super") => {
+            Some(ModelInfo::new(262_144, 32_768))
+        }
+
         _ if slug.starts_with("codex-") => Some(ModelInfo::new(272_000, 128_000)),
 
         _ => None,

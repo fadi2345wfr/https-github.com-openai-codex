@@ -202,6 +202,49 @@ async fn streams_reasoning_from_string_delta() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn streams_reasoning_from_reasoning_content_delta() {
+    if network_disabled() {
+        println!(
+            "Skipping test because it cannot execute when network is disabled in a Codex sandbox."
+        );
+        return;
+    }
+
+    // vLLM-based servers (e.g. NVIDIA NIM serving Nemotron) use `reasoning_content`
+    // and may send a null `reasoning` alongside it.
+    let sse = concat!(
+        "data: {\"choices\":[{\"delta\":{\"reasoning\":null,\"reasoning_content\":\"think1\"}}]}\n\n",
+        "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\n",
+        "data: {\"choices\":[{\"delta\":{} ,\"finish_reason\":\"stop\"}]}\n\n",
+    );
+
+    let events = run_stream(sse).await;
+    assert_eq!(events.len(), 5, "unexpected events: {events:?}");
+
+    match &events[0] {
+        ResponseEvent::ReasoningContentDelta(text) => assert_eq!(text, "think1"),
+        other => panic!("expected reasoning delta, got {other:?}"),
+    }
+
+    match &events[1] {
+        ResponseEvent::OutputTextDelta(text) => assert_eq!(text, "ok"),
+        other => panic!("expected text delta, got {other:?}"),
+    }
+
+    match &events[2] {
+        ResponseEvent::OutputItemDone(item) => assert_reasoning(item, "think1"),
+        other => panic!("expected reasoning item, got {other:?}"),
+    }
+
+    match &events[3] {
+        ResponseEvent::OutputItemDone(item) => assert_message(item, "ok"),
+        other => panic!("expected message item, got {other:?}"),
+    }
+
+    assert!(matches!(events[4], ResponseEvent::Completed { .. }));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn streams_reasoning_from_object_delta() {
     if network_disabled() {
         println!(

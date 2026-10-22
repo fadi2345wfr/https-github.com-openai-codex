@@ -251,14 +251,20 @@ const DEFAULT_OLLAMA_PORT: u32 = 11434;
 
 pub const BUILT_IN_OSS_MODEL_PROVIDER_ID: &str = "oss";
 
+pub const BUILT_IN_NVIDIA_MODEL_PROVIDER_ID: &str = "nvidia";
+
+/// NVIDIA's hosted, OpenAI-compatible API (https://build.nvidia.com).
+const DEFAULT_NVIDIA_BASE_URL: &str = "https://integrate.api.nvidia.com/v1";
+
 /// Built-in default provider list.
 pub fn built_in_model_providers() -> HashMap<String, ModelProviderInfo> {
     use ModelProviderInfo as P;
 
     // We do not want to be in the business of adjucating which third-party
-    // providers are bundled with Codex CLI, so we only include the OpenAI and
-    // open source ("oss") providers by default. Users are encouraged to add to
-    // `model_providers` in config.toml to add their own providers.
+    // providers are bundled with Codex CLI, so we only include the OpenAI,
+    // open source ("oss") and NVIDIA (Nemotron) providers by default. Users are
+    // encouraged to add to `model_providers` in config.toml to add their own
+    // providers.
     [
         (
             "openai",
@@ -300,6 +306,7 @@ pub fn built_in_model_providers() -> HashMap<String, ModelProviderInfo> {
             },
         ),
         (BUILT_IN_OSS_MODEL_PROVIDER_ID, create_oss_provider()),
+        (BUILT_IN_NVIDIA_MODEL_PROVIDER_ID, create_nvidia_provider()),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v))
@@ -333,6 +340,33 @@ pub fn create_oss_provider_with_base_url(base_url: &str) -> ModelProviderInfo {
         base_url: Some(base_url.into()),
         env_key: None,
         env_key_instructions: None,
+        wire_api: WireApi::Chat,
+        query_params: None,
+        http_headers: None,
+        env_http_headers: None,
+        request_max_retries: None,
+        stream_max_retries: None,
+        stream_idle_timeout_ms: None,
+        requires_openai_auth: false,
+    }
+}
+
+pub fn create_nvidia_provider() -> ModelProviderInfo {
+    ModelProviderInfo {
+        name: "NVIDIA".into(),
+        // Allow users to point at a self-hosted NIM endpoint by exporting
+        // `NVIDIA_BASE_URL`.
+        base_url: Some(
+            std::env::var("NVIDIA_BASE_URL")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+                .unwrap_or_else(|| DEFAULT_NVIDIA_BASE_URL.to_string()),
+        ),
+        env_key: Some("NVIDIA_API_KEY".into()),
+        env_key_instructions: Some(
+            "Create an API key at https://build.nvidia.com and export it as `NVIDIA_API_KEY`."
+                .into(),
+        ),
         wire_api: WireApi::Chat,
         query_params: None,
         http_headers: None,
@@ -384,6 +418,17 @@ base_url = "http://localhost:11434/v1"
 
         let provider: ModelProviderInfo = toml::from_str(azure_provider_toml).unwrap();
         assert_eq!(expected_provider, provider);
+    }
+
+    #[test]
+    fn test_built_in_nvidia_provider() {
+        let providers = built_in_model_providers();
+        let provider = &providers[BUILT_IN_NVIDIA_MODEL_PROVIDER_ID];
+
+        assert_eq!(provider.name, "NVIDIA");
+        assert_eq!(provider.env_key.as_deref(), Some("NVIDIA_API_KEY"));
+        assert_eq!(provider.wire_api, WireApi::Chat);
+        assert!(!provider.requires_openai_auth);
     }
 
     #[test]
